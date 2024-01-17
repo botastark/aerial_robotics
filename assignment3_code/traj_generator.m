@@ -1,0 +1,128 @@
+function [ desired_state ] = traj_generator(t, state, waypoints)
+% TRAJ_GENERATOR: Generate the trajectory passing through all
+% positions listed in the waypoints list
+%
+% NOTE: This function would be called with variable number of input arguments.
+% During initialization, it will be called with arguments
+% trajectory_generator([], [], waypoints) and later, while testing, it will be
+% called with only t and state as arguments, so your code should be able to
+% handle that. This can be done by checking the number of arguments to the
+% function using the "nargin" variable, check the MATLAB documentation for more
+% information.
+%
+% t,state: time and current state (same variable as "state" in controller)
+% that you may use for computing desired_state
+%
+% waypoints: The 3xP matrix listing all the points you much visited in order
+% along the generated trajectory
+%
+% desired_state: Contains all the information that is passed to the
+% controller for generating inputs for the quadrotor
+%
+% It is suggested to use "persistent" variables to store the waypoints during
+% the initialization call of trajectory_generator.
+
+
+%% Example code:
+% Note that this is an example of naive trajectory generator that simply moves
+% the quadrotor along a stright line between each pair of consecutive waypoints
+% using a constant velocity of 0.5 m/s. Note that this is only a sample, and you
+% should write your own trajectory generator for the submission.
+
+persistent waypoints0 traj_time d0 alpha
+if nargin > 2
+    d = waypoints(:,2:end) - waypoints(:,1:end-1);
+    d0 = 2 * sqrt(d(1,:).^2 + d(2,:).^2 + d(3,:).^2);
+    [~, n] = size(waypoints);% number of waypoints
+    n = n-1;
+    % d0 = ones(1, n);
+    traj_time = [0, cumsum(d0)];
+    waypoints0 = waypoints;
+    A = get_matrix_A(n,d0);
+    b = [get_b(waypoints0(1,:),n) get_b(waypoints0(2,:),n) get_b(waypoints0(3,:),n)];
+    alpha = [A \ b(:,1), A \ b(:,2), A \ b(:,3)];
+    alpha = double(alpha);
+else
+    if(t > traj_time(end))
+        % t = traj_time(end);
+        t = traj_time(end) - 0.0001;
+        desired_state.pos = waypoints0(:,end);
+        desired_state.vel = zeros(3,1);
+        desired_state.acc = zeros(3,1);
+        desired_state.yaw = 0;
+        desired_state.yawdot = 0;
+    end
+    
+    
+    t_index = find(traj_time >= t,1)-1;
+    if (t_index == 0)
+         t_index = 1;
+    end
+    disp("t");
+    disp(t);
+    disp("t  index");
+    disp(t_index);
+    % disp("traj time");
+    % disp(traj_time);
+    % disp("alpha size");
+    % disp(size(alpha));
+    if(t == 0)
+        desired_state.pos = waypoints0(:,1);
+        desired_state.vel = 0*waypoints0(:,1);
+        desired_state.acc = 0*waypoints0(:,1);
+    else
+      
+        if(t_index > 1)
+            t = t - traj_time(t_index-1);
+        end
+        curr_alpha = alpha(8*(t_index-1)+1:8*t_index,:); %8x3
+        
+        scale = double(t/d0(t_index));
+        temp = [scale^7, scale^6,...
+                scale^5, scale^4,...
+                scale^3, scale^2,...
+                scale, 1];
+  
+        temp_d = 1/d0(t_index)*[7*scale^6,...
+                6*scale^5, 5*scale^4,...
+                4*scale^3, 3*scale^2,...
+                2*scale, 1,0];
+        temp_dd = 1/d0(t_index)^2*[...
+                7*6*scale^5, 30*scale^4,...
+                20*scale^3, 12*scale^2,...
+                6*scale, 2,0,0];
+    
+
+        desired_state.pos = double(temp)*curr_alpha;
+        desired_state.vel = double(temp_d)*curr_alpha;
+        desired_state.acc = double(temp_dd)*curr_alpha;
+    
+    end
+    desired_state.yaw = 0;
+    desired_state.yawdot = 0;
+
+
+    % if(t == 0)
+    %     desired_state.pos = waypoints0(:,1);
+    % else
+    %     scale = t/d0(t_index-1);
+    %     desired_state.pos = (1 - scale) * waypoints0(:,t_index-1) + scale * waypoints0(:,t_index);
+    % end
+    % desired_state.vel = zeros(3,1);
+    % desired_state.acc = zeros(3,1);
+
+    % disp(desired_state.pos);
+    % disp(desired_state.vel);
+    % disp(desired_state.acc);
+end
+%
+
+
+%% Fill in your code here
+
+% desired_state.pos = zeros(3,1);
+% desired_state.vel = zeros(3,1);
+% desired_state.acc = zeros(3,1);
+% desired_state.yaw = 0;
+end
+

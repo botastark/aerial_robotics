@@ -1,0 +1,16 @@
+function [grande_A] = get_matrix_A(n,Temp)
+%UNTITLED2 Summary of this function goes here
+%   Detailed explanation goes here
+syms grande_A [8*n 8*n] 
+syms T
+
+A_alpha = get_coeffients();
+for diag=1.0:1.0:n
+    A_start = 8*(diag-1)+1;
+    A_end = 8*diag;
+    A = double(subs(A_alpha,T,Temp(diag)));
+    grande_A(A_start:A_end,1:A_start-1)=zeros(8, 8*(diag-1));
+    grande_A(A_start:A_end,A_start:A_end)=A;
+    grande_A(A_start:A_end,A_end+1:8*n)=zeros(8, 8*(n-diag));
+end
+end
